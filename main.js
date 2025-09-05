@@ -13,18 +13,11 @@ document.getElementById('startBtn').onclick = async () => {
     log('Init AWS...');
     AWS.config.region = REGION;
     
-    // استفاده از Amplify Environment Variables
-    if (window.awsExports) {
-      AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-        IdentityPoolId: window.awsExports.aws_cognito_identity_pool_id
-      });
-    } else {
-      // Fallback to manual credentials
-      AWS.config.credentials = new AWS.Credentials({
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'YOUR_ACCESS_KEY',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'YOUR_SECRET_KEY'
-      });
-    }
+    // استفاده از Environment Variables
+    AWS.config.credentials = new AWS.Credentials({
+      accessKeyId: process.env.ACCESS_KEY,
+      secretAccessKey: process.env.SECRET_KEY
+    });
     log('AWS credentials ready.');
 
     const kv = new AWS.KinesisVideo({ region: REGION, credentials: AWS.config.credentials });
