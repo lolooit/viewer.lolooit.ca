@@ -47,7 +47,14 @@ document.getElementById('startBtn').onclick = async () => {
     const pc = new RTCPeerConnection({ iceServers });
     const remoteVideo = document.getElementById('remoteVideo');
     pc.ontrack = (e) => { if (!remoteVideo.srcObject) remoteVideo.srcObject = e.streams[0]; };
-    pc.onconnectionstatechange = () => log('PC state:', pc.connectionState);
+    pc.onconnectionstatechange = () => {
+      log('PC state:', pc.connectionState);
+      if (pc.connectionState === 'connected') {
+        log('✅ WebRTC connection established!');
+      } else if (pc.connectionState === 'failed') {
+        log('❌ WebRTC connection failed');
+      }
+    };
 
     const signalingClient = new KVSWebRTC.SignalingClient({
       channelARN: channelArn,
@@ -74,8 +81,12 @@ document.getElementById('startBtn').onclick = async () => {
 
     signalingClient.on('sdpAnswer', async answer => { 
       log('Got SDP answer from master'); 
-      await pc.setRemoteDescription(answer);
-      log('Remote description set');
+      try {
+        await pc.setRemoteDescription(answer);
+        log('Remote description set - connection should be established');
+      } catch (err) {
+        log('Error setting remote description:', err.message);
+      }
     });
     
     signalingClient.on('iceCandidate', cand => { 
