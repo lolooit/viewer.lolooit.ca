@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fa">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Viewer | lolooit-live</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:24px}
+    .row{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+    label{display:flex;flex-direction:column;font-size:12px;color:#555}
+    input{padding:8px;border:1px solid #ddd;border-radius:8px;min-width:260px}
+    button{padding:10px 16px;border:0;border-radius:10px;background:#111;color:#fff;cursor:pointer}
+    video{width:560px;max-width:95%;border:1px solid #eee;border-radius:12px}
+    .log{white-space:pre-wrap;background:#fafafa;border:1px solid #eee;padding:10px;border-radius:8px}
+  </style>
+</head>
+<body>
+  <h2>Viewer — lolooit-live</h2>
+
+  <div class="row" style="margin-bottom:12px">
+    <label>Region
+      <input id="region" />
+    </label>
+    <label>Identity Pool Id (Viewer)
+      <input id="identityPool" />
+    </label>
+    <button id="startBtn">Start Viewer</button>
+  </div>
+
+  <video id="remoteVideo" autoplay playsinline></video>
+  <h4>Logs</h4>
+  <div id="log" class="log"></div>
+
+  <!-- libs -->
+  <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1481.0.min.js"></script>
+  <script src="https://unpkg.com/amazon-kinesis-video-streams-webrtc/dist/kvs-webrtc.min.js"></script>
+
+  <!-- app -->
+  <script src="./config.js"></script>
+  <script src="./main.js"></script>
+</body>
+</html>

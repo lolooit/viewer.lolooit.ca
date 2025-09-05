@@ -1,0 +1,75 @@
+const logEl = document.getElementById('log');
+const log = (...args) => { console.log(...args); logEl.textContent += args.join(' ') + '\n'; };
+
+const cfg = window.APP_CONFIG;
+document.getElementById('region').value = cfg.REGION;
+document.getElementById('identityPool').value = cfg.IDENTITY_POOL_ID;
+
+document.getElementById('startBtn').onclick = async () => {
+  try {
+    const REGION = document.getElementById('region').value.trim();
+    const POOL = document.getElementById('identityPool').value.trim();
+    const CHANNEL = cfg.CHANNEL_NAME;
+
+    log('Init AWS...');
+    AWS.config.region = REGION;
+    AWS.config.credentials = new AWS.CognitoIdentityCredentials({ IdentityPoolId: POOL });
+    await new Promise((res, rej) => AWS.config.credentials.get(err => err ? rej(err) : res()));
+    log('Cognito identity ready.');
+
+    const kv = new AWS.KinesisVideo({ region: REGION, credentials: AWS.config.credentials });
+
+    log('DescribeSignalingChannel...');
+    const { ChannelInfo } = await kv.describeSignalingChannel({ ChannelName: CHANNEL }).promise();
+    const channelArn = ChannelInfo.ChannelARN;
+
+    log('GetSignalingChannelEndpoint (VIEWER)...');
+    const { ResourceEndpointList } = await kv.getSignalingChannelEndpoint({
+      ChannelARN: channelArn,
+      SingleMasterChannelEndpointConfiguration: { Protocols: ['WSS','HTTPS'], Role: 'VIEWER' }
+    }).promise();
+
+    const endpoints = {};
+    (ResourceEndpointList || []).forEach(e => endpoints[e.Protocol] = e.ResourceEndpoint);
+
+    const kvsSig = new AWS.KinesisVideoSignalingChannels({
+      region: REGION, endpoint: endpoints.HTTPS, credentials: AWS.config.credentials
+    });
+
+    log('GetIceServerConfig...');
+    const ice = await kvsSig.getIceServerConfig({ ChannelARN: channelArn }).promise();
+    const iceServers = [{ urls: `stun:stun.kinesisvideo.${REGION}.amazonaws.com:443` }];
+    (ice.IceServerList || []).forEach(s => iceServers.push({ urls: s.Uris, username: s.Username, credential: s.Password }));
+
+    const pc = new RTCPeerConnection({ iceServers });
+    const remoteVideo = document.getElementById('remoteVideo');
+    pc.ontrack = (e) => { if (!remoteVideo.srcObject) remoteVideo.srcObject = e.streams[0]; };
+    pc.onconnectionstatechange = () => log('PC state:', pc.connectionState);
+
+    const signalingClient = new KVSWebRTC.SignalingClient({
+      channelARN: channelArn,
+      channelEndpoint: endpoints.WSS,
+      role: KVSWebRTC.Role.VIEWER,
+      region: REGION,
+      credentials: AWS.config.credentials,
+      systemClockOffset: kv.config.systemClockOffset
+    });
+
+    signalingClient.on('open', async () => {
+      log('Signaling OPEN. Creating offer...');
+      const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+      await pc.setLocalDescription(offer);
+      signalingClient.sendSdpOffer(pc.localDescription);
+    });
+
+    signalingClient.on('sdpAnswer', async answer => { log('Got SDP answer'); await pc.setRemoteDescription(answer); });
+    signalingClient.on('iceCandidate', cand => { log('Remote ICE'); pc.addIceCandidate(cand); });
+    pc.onicecandidate = ({ candidate }) => { if (candidate) signalingClient.sendIceCandidate(candidate); };
+
+    signalingClient.open();
+    log('VIEWER started.');
+  } catch (err) {
+    console.error(err); log('ERROR:', err && (err.message || JSON.stringify(err)));
+    alert('Error: ' + (err?.message || err));
+  }
+};
