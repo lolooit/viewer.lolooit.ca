@@ -52,6 +52,7 @@ document.getElementById('startBtn').onclick = async () => {
     const signalingClient = new KVSWebRTC.SignalingClient({
       channelARN: channelArn,
       channelEndpoint: endpoints.WSS,
+      clientId: 'viewer-' + Date.now(),
       role: KVSWebRTC.Role.VIEWER,
       region: REGION,
       credentials: AWS.config.credentials,
