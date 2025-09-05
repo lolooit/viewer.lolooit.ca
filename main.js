@@ -73,21 +73,25 @@ document.getElementById('startBtn').onclick = async () => {
     });
 
     // Event handlers
-    signalingClient.on('open', () => {
-      log('Signaling OPEN. Waiting for offer from master...');
+    signalingClient.on('open', async () => {
+      log('Signaling OPEN. Creating offer...');
+      try {
+        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+        await pc.setLocalDescription(offer);
+        signalingClient.sendSdpOffer(pc.localDescription);
+        log('SDP offer sent to master');
+      } catch (err) {
+        log('Error creating offer:', err.message);
+      }
     });
 
-    signalingClient.on('sdpOffer', async offer => {
-      log('Got SDP offer from master');
+    signalingClient.on('sdpAnswer', async answer => {
+      log('Got SDP answer from master');
       try {
-        await pc.setRemoteDescription(offer);
-        log('Remote description set');
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        signalingClient.sendSdpAnswer(pc.localDescription);
-        log('SDP answer sent to master');
+        await pc.setRemoteDescription(answer);
+        log('Remote description set - connection established');
       } catch (err) {
-        log('Error handling offer:', err.message);
+        log('Error setting remote description:', err.message);
       }
     });
     
