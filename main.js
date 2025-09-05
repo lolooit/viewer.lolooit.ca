@@ -61,14 +61,38 @@ document.getElementById('startBtn').onclick = async () => {
 
     signalingClient.on('open', async () => {
       log('Signaling OPEN. Creating offer...');
-      const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-      await pc.setLocalDescription(offer);
-      signalingClient.sendSdpOffer(pc.localDescription);
+      try {
+        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+        await pc.setLocalDescription(offer);
+        log('Offer created and set as local description');
+        signalingClient.sendSdpOffer(pc.localDescription);
+        log('SDP offer sent to master');
+      } catch (err) {
+        log('Error creating offer:', err.message);
+      }
     });
 
-    signalingClient.on('sdpAnswer', async answer => { log('Got SDP answer'); await pc.setRemoteDescription(answer); });
-    signalingClient.on('iceCandidate', cand => { log('Remote ICE'); pc.addIceCandidate(cand); });
-    pc.onicecandidate = ({ candidate }) => { if (candidate) signalingClient.sendIceCandidate(candidate); };
+    signalingClient.on('sdpAnswer', async answer => { 
+      log('Got SDP answer from master'); 
+      await pc.setRemoteDescription(answer);
+      log('Remote description set');
+    });
+    
+    signalingClient.on('iceCandidate', cand => { 
+      log('Remote ICE candidate received'); 
+      pc.addIceCandidate(cand); 
+    });
+    
+    signalingClient.on('error', (error) => {
+      log('Signaling error:', error.message);
+    });
+    
+    pc.onicecandidate = ({ candidate }) => { 
+      if (candidate) {
+        log('Sending local ICE candidate');
+        signalingClient.sendIceCandidate(candidate);
+      }
+    };
 
     signalingClient.open();
     log('VIEWER started.');
