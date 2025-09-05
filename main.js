@@ -15,8 +15,8 @@ document.getElementById('startBtn').onclick = async () => {
     
     // استفاده از Environment Variables
     AWS.config.credentials = new AWS.Credentials({
-      accessKeyId: process.env.ACCESS_KEY,
-      secretAccessKey: process.env.SECRET_KEY
+      accessKeyId: window.ENV?.ACCESS_KEY || 'YOUR_ACCESS_KEY',
+      secretAccessKey: window.ENV?.SECRET_KEY || 'YOUR_SECRET_KEY'
     });
     log('AWS credentials ready.');
 
