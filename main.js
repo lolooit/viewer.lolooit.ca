@@ -95,6 +95,14 @@ document.getElementById('startBtn').onclick = async () => {
       }
     });
     
+    // Debug all signaling events
+    signalingClient.addEventListener = signalingClient.on;
+    const originalOn = signalingClient.on;
+    signalingClient.on = function(event, handler) {
+      log('Registering handler for:', event);
+      return originalOn.call(this, event, handler);
+    };
+    
     signalingClient.on('iceCandidate', cand => { 
       log('Remote ICE candidate received'); 
       pc.addIceCandidate(cand); 
@@ -115,8 +123,18 @@ document.getElementById('startBtn').onclick = async () => {
       }
     };
 
+    // Test all possible events
+    signalingClient.on('message', (msg) => {
+      log('Raw message received:', JSON.stringify(msg));
+    });
+    
     signalingClient.open();
     log('VIEWER started.');
+    
+    // Debug signaling client state
+    setTimeout(() => {
+      log('Signaling client state:', signalingClient.readyState);
+    }, 1000);
   } catch (err) {
     console.error(err); log('ERROR:', err && (err.message || JSON.stringify(err)));
     alert('Error: ' + (err?.message || err));
