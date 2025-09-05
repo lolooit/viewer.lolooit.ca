@@ -14,6 +14,8 @@ document.getElementById('startBtn').onclick = async () => {
     log('Init AWS...');
     AWS.config.region = REGION;
     AWS.config.credentials = new AWS.CognitoIdentityCredentials({ IdentityPoolId: POOL });
+    AWS.config.credentials.clearCachedId(); // تا Identity کش‌شده پاک شود
+
     await new Promise((res, rej) => AWS.config.credentials.get(err => err ? rej(err) : res()));
     log('Cognito identity ready.');
 
