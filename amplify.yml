@@ -1,0 +1,18 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - echo "Starting build"
+    build:
+      commands:
+        - echo "Injecting environment variables"
+        - sed -i "s|YOUR_ACCESS_KEY_HERE|$ACCESS_KEY|g" main.js
+        - sed -i "s|YOUR_SECRET_KEY_HERE|$SECRET_KEY|g" main.js
+        - echo "Build completed"
+  artifacts:
+    baseDirectory: /
+    files:
+      - '**/*'
+  cache:
+    paths: []

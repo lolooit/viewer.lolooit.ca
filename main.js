@@ -8,16 +8,17 @@ document.getElementById('identityPool').value = cfg.IDENTITY_POOL_ID;
 document.getElementById('startBtn').onclick = async () => {
   try {
     const REGION = document.getElementById('region').value.trim();
-    const POOL = document.getElementById('identityPool').value.trim();
     const CHANNEL = cfg.CHANNEL_NAME;
 
     log('Init AWS...');
     AWS.config.region = REGION;
-    AWS.config.credentials = new AWS.CognitoIdentityCredentials({ IdentityPoolId: POOL });
-    AWS.config.credentials.clearCachedId(); // تا Identity کش‌شده پاک شود
-
-    await new Promise((res, rej) => AWS.config.credentials.get(err => err ? rej(err) : res()));
-    log('Cognito identity ready.');
+    
+    // استفاده از Environment Variables از Amplify
+    AWS.config.credentials = new AWS.Credentials({
+      accessKeyId: 'YOUR_ACCESS_KEY_HERE',
+      secretAccessKey: 'YOUR_SECRET_KEY_HERE'
+    });
+    log('AWS credentials ready.');
 
     const kv = new AWS.KinesisVideo({ region: REGION, credentials: AWS.config.credentials });
 
