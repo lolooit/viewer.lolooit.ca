@@ -13,11 +13,18 @@ document.getElementById('startBtn').onclick = async () => {
     log('Init AWS...');
     AWS.config.region = REGION;
     
-    // استفاده از Environment Variables از Amplify
-    AWS.config.credentials = new AWS.Credentials({
-      accessKeyId: 'YOUR_ACCESS_KEY_HERE',
-      secretAccessKey: 'YOUR_SECRET_KEY_HERE'
-    });
+    // استفاده از Amplify Environment Variables
+    if (window.awsExports) {
+      AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+        IdentityPoolId: window.awsExports.aws_cognito_identity_pool_id
+      });
+    } else {
+      // Fallback to manual credentials
+      AWS.config.credentials = new AWS.Credentials({
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'YOUR_ACCESS_KEY',
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'YOUR_SECRET_KEY'
+      });
+    }
     log('AWS credentials ready.');
 
     const kv = new AWS.KinesisVideo({ region: REGION, credentials: AWS.config.credentials });
@@ -46,11 +53,13 @@ document.getElementById('startBtn').onclick = async () => {
 
     const pc = new RTCPeerConnection({ iceServers });
     const remoteVideo = document.getElementById('remoteVideo');
-    pc.ontrack = (e) => { 
+    pc.ontrack = (event) => { 
       log('Received remote video track');
-      if (e.streams && e.streams[0]) {
-        remoteVideo.srcObject = e.streams[0];
+      if (event.streams && event.streams[0]) {
+        remoteVideo.srcObject = event.streams[0];
         log('Video stream attached to video element');
+        // اطمینان از پخش ویدیو
+        remoteVideo.play().catch(e => log('Video play error:', e.message));
       }
     };
     pc.onconnectionstatechange = () => {
@@ -85,27 +94,28 @@ document.getElementById('startBtn').onclick = async () => {
       }
     });
 
-    signalingClient.on('sdpAnswer', async answer => {
+    signalingClient.on('sdpAnswer', async (answer) => {
       log('Got SDP answer from master');
       try {
         await pc.setRemoteDescription(answer);
-        log('Remote description set - connection established');
+        log('Remote description set successfully');
       } catch (err) {
         log('Error setting remote description:', err.message);
       }
     });
     
     // Debug all signaling events
-    signalingClient.addEventListener = signalingClient.on;
-    const originalOn = signalingClient.on;
-    signalingClient.on = function(event, handler) {
+    ['iceCandidate', 'error', 'close', 'message'].forEach(event => {
       log('Registering handler for:', event);
-      return originalOn.call(this, event, handler);
-    };
+    });
     
-    signalingClient.on('iceCandidate', cand => { 
+    signalingClient.on('iceCandidate', async (candidate) => { 
       log('Remote ICE candidate received'); 
-      pc.addIceCandidate(cand); 
+      try {
+        await pc.addIceCandidate(candidate);
+      } catch (err) {
+        log('Error adding ICE candidate:', err.message);
+      }
     });
     
     signalingClient.on('error', (error) => {
@@ -123,9 +133,8 @@ document.getElementById('startBtn').onclick = async () => {
       }
     };
 
-    // Test all possible events
     signalingClient.on('message', (msg) => {
-      log('Raw message received:', JSON.stringify(msg));
+      log('Raw message received:', msg.messageType || 'unknown');
     });
     
     signalingClient.open();
