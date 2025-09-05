@@ -46,7 +46,13 @@ document.getElementById('startBtn').onclick = async () => {
 
     const pc = new RTCPeerConnection({ iceServers });
     const remoteVideo = document.getElementById('remoteVideo');
-    pc.ontrack = (e) => { if (!remoteVideo.srcObject) remoteVideo.srcObject = e.streams[0]; };
+    pc.ontrack = (e) => { 
+      log('Received remote video track');
+      if (e.streams && e.streams[0]) {
+        remoteVideo.srcObject = e.streams[0];
+        log('Video stream attached to video element');
+      }
+    };
     pc.onconnectionstatechange = () => {
       log('PC state:', pc.connectionState);
       if (pc.connectionState === 'connected') {
@@ -66,6 +72,7 @@ document.getElementById('startBtn').onclick = async () => {
       systemClockOffset: kv.config.systemClockOffset
     });
 
+    // Event handlers
     signalingClient.on('open', async () => {
       log('Signaling OPEN. Creating offer...');
       try {
@@ -96,6 +103,10 @@ document.getElementById('startBtn').onclick = async () => {
     
     signalingClient.on('error', (error) => {
       log('Signaling error:', error.message);
+    });
+    
+    signalingClient.on('close', () => {
+      log('Signaling connection closed');
     });
     
     pc.onicecandidate = ({ candidate }) => { 
